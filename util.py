@@ -1,9 +1,116 @@
+import sys
 import numpy as np 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 import torch 
+from mpl_toolkits.mplot3d import Axes3D
+from typing import List
+
+def print_list(loss_list: List[float], radius: float):
+    for i in range(len(loss_list)):
+        ending = ","
+        if i == len(loss_list)-1:
+            ending = ""
+        print(str(loss_list[i]/(radius*radius)) + ending, end="", file=sys.stderr)
+    print("", file=sys.stderr)
+
+
+def random_point_on_sphere(r: float):
+    theta = np.random.uniform(0, 2 * np.pi)
+    
+    phi = np.arccos(np.random.uniform(-1, 1))
+    
+    x = r * np.sin(phi) * np.cos(theta)
+    y = r * np.sin(phi) * np.sin(theta)
+    z = r * np.cos(phi)
+    
+    point = torch.tensor([x, y, z], dtype=torch.float32)
+    return point
+
+def find_closest_point(a: torch.Tensor, b: torch.Tensor):
+    x = (a[0] + b[0])/2
+    y = (a[1] + b[1])/2
+    z = (a[2] + b[2])/2
+    return torch.tensor([x, y, z], dtype=torch.float32)
+
+def project_point_to_sphere(point: torch.Tensor, radius: float) -> torch.Tensor:
+    norm = torch.norm(point)
+    normalized_point = point / norm
+    projected_point = normalized_point * radius
+    return projected_point
+
+
+def normalize_tensor(tensor: torch.Tensor, radius: float):
+    magnitude = tensor.norm()
+    normalization_constant = radius / magnitude
+    normalized_tensor = normalization_constant * tensor
+    return normalized_tensor
+
+def create_pointer(x: float, y: float, z: float):
+    return np.array([x, y, z])
+
+def plot_vectors(ax, vector_list: List[torch.Tensor], position_list: List[torch.Tensor], color: str):
+    if len(vector_list) <= 1:
+        return
+    
+    for i in range(1, len(vector_list)):
+        prev_vec = position_list[i-1]
+        new_vec = vector_list[i].detach().cpu().numpy()
+        ax.quiver(prev_vec[0], prev_vec[1], prev_vec[2], new_vec[0], new_vec[1], new_vec[2], color=color, normalize=False)
+        
+    print(vector_list)
+    print(position_list)
+
+def plot_sphere(ax, radius: float, a: torch.Tensor, b: torch.Tensor, n: torch.Tensor, not_normalized: torch.Tensor):
+    # Generate spherical coordinates
+    phi = np.linspace(0, np.pi, 50)  # Azimuthal angle
+    theta = np.linspace(0, 2 * np.pi, 50)  # Polar angle
+
+    phi, theta = np.meshgrid(phi, theta)
+
+    # Convert spherical coordinates to Cartesian coordinates
+    x = radius * np.sin(phi) * np.cos(theta)
+    y = radius * np.sin(phi) * np.sin(theta)
+    z = radius * np.cos(phi)
+
+    # Plot the surface without edges
+    ax.plot_surface(x, y, z, color='b', alpha=0.6, edgecolor='none')
+
+    # Convert PyTorch tensors to NumPy arrays for plotting
+    a_np = a.detach().cpu().numpy()
+    b_np = b.detach().cpu().numpy()
+    n_np = n.detach().cpu().numpy()
+    nn_np = not_normalized.detach().cpu().numpy()
+
+    # Plot the points a, b, and n
+    ax.scatter(a_np[0], a_np[1], a_np[2], color='r', s=100, label='Point A')
+    ax.scatter(b_np[0], b_np[1], b_np[2], color='g', s=100, label='Point B')
+    ax.scatter(n_np[0], n_np[1], n_np[2], color='y', s=100, label='Point N (normalized)')
+    ax.scatter(nn_np[0], nn_np[1], nn_np[2], color='k', s=100, label='Point N (not normalized)')
+
+    # Set axis labels
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    # Set equal aspect ratio for all axes
+    ax.set_box_aspect([1, 1, 1])
+
+    # Set the limits
+    ax.set_xlim([-radius*2, radius*2])
+    ax.set_ylim([-radius*2, radius*2])
+    ax.set_zlim([-radius*2, radius*2])
+
+    # Add a legend
+    ax.legend()
+
+def sphere_energy(a, b, n):
+    dist_a = torch.norm(n - a, p=2) ** 2
+    dist_b = torch.norm(n - b, p=2) ** 2
+    energy = 0.5 * (dist_a + dist_b)
+    return energy
 
 def laplacian_uniform_2d(v, l):
     V = v.shape[0]
