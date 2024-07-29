@@ -1,5 +1,5 @@
 
-num_steps=50
+num_steps=1
 
 for i in {1..10}
 do

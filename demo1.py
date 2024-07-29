@@ -11,21 +11,28 @@ parser = argparse.ArgumentParser(description='The short demo of the VectorAdam M
 
 parser.add_argument('arg1', type=float, help='Radius')
 parser.add_argument('arg2', type=int, help='Iterations')
+parser.add_argument('--learning_rate', type=float, default=1.5, help='Learning rate (default: 1.5)')
+parser.add_argument('-f', '--flag', action='store_true', help='A boolean flag for showing vectors')
 
 # Parse the arguments
 args = parser.parse_args()
 
 # Access the arguments
-print(args.arg1, file=sys.stderr)
+# print(args.arg1, file=sys.stderr)
+# print(args.arg2, file=sys.stderr)
+print(args.learning_rate, file=sys.stderr)
 print(args.arg2, file=sys.stderr)
 
 # Set optimizer hyperparameters
-lr = 1.5
+lr = args.learning_rate
 betas = (0.9, 0.999)
 eps = 1e-8
 
 # Define radius constant
 radius = args.arg1
+
+# Define vector constant
+show_vector_flag = args.flag
 
 # starting_point = random_point_on_sphere(radius)
 starting_point = torch.from_numpy(create_pointer(0, 0, radius))
@@ -101,7 +108,6 @@ for i in range(args.arg2):
     vector_list_unprojected.append(adam_step_unnormalized.clone())
     loss_list_unnormalized.append(loss2.item())
 
-
     normalized_v = normalize_tensor(v.clone(), radius)
     normalized_unprojected_v = normalize_tensor(v_unprojected.clone(), radius)
 
@@ -109,8 +115,9 @@ for i in range(args.arg2):
         v.copy_(normalized_v)
         v_unprojected.copy_(normalized_unprojected_v)
 
-    position_list.append(v.detach().cpu().clone())
-    position_list_unprojected.append(v_unprojected.detach().cpu().clone())
+    if show_vector_flag:
+        position_list.append(v.detach().cpu().clone())
+        position_list_unprojected.append(v_unprojected.detach().cpu().clone())
 
     # Clear the previous plots
     ax_sphere.cla()
@@ -119,8 +126,9 @@ for i in range(args.arg2):
 
     # Plot the sphere and points
     plot_sphere(ax_sphere, radius, a, b, v, v_unprojected)
-    plot_vectors(ax_sphere, vector_list, position_list, 'g')
-    plot_vectors(ax_sphere, vector_list_unprojected, position_list_unprojected, 'm')
+    if show_vector_flag:
+        plot_vectors(ax_sphere, vector_list, position_list, 'g')
+        plot_vectors(ax_sphere, vector_list_unprojected, position_list_unprojected, 'm')
     ax_sphere.set_title(f'Iteration {i+1}')
 
     # Plot the loss
@@ -139,7 +147,7 @@ for i in range(args.arg2):
 
     # Pause to update the plot
     plt.draw()
-    plt.pause(1)  # Pause for 0.5 seconds
+    plt.pause(0.1)  # Pause for 0.5 seconds
 
 # Disable interactive mode and show the final plot
 print(f"The final position of projected VectorAdam is {v}, the intended position is {project_point_to_sphere(find_closest_point(a, b), radius)}")
@@ -149,6 +157,6 @@ print_list(loss_list, radius)
 print_list(loss_list_unnormalized, radius)
 
 plt.ioff()
-plt.show()
+# plt.show()
 
-# plt.close('all')
+plt.close()
