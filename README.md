@@ -24,3 +24,7 @@ optimizer = VectorAdam(
 ```
 
 The above example will apply VectorAdam's vector-wise operations to X along the last axis and Y along the 1st axis, with specified learning rate, betas and epsilon hyperparameters.
+
+## Read More
+
+See my [blog](https://tropical-roadrunner-d78.notion.site/VectorAdam-Variant-Optimizing-on-a-Sphere-e26599a4d4774e31a463187f7ba2e207) about this experiment 
