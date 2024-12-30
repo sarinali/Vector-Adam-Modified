@@ -11,7 +11,7 @@ class SphereSimulation:
 simulations = []
 num_values = 0
 
-with open('logs/loss_logs.txt', 'r') as file:
+with open('logs/20241120_211632_loss_logs.txt', 'r') as file:
     # Read the lines
     lines = file.readlines()
 
@@ -49,11 +49,11 @@ for i in range(num_values):
     unprojected_avg.append(val_sum/len(simulations))
 
 for i in range(len(simulations)):
-    plt.plot(x, simulations[i].projected, label=f"Radius {i+1} (projected)", alpha=0.2, color="blue")
-    plt.plot(x, simulations[i].unprojected, label=f"Radius {i+1} (unprojected)", alpha=0.2, color="green")
+    plt.plot(x, simulations[i].projected, label=f"Radius {i+1} (Gradient: Projected, Momentum: Rotated)", alpha=0.2, color="blue")
+    plt.plot(x, simulations[i].unprojected, label=f"Radius {i+1} (Gradient: Projected, Momentum: Projected)", alpha=0.2, color="green")
 
-plt.plot(x, projected_avg, label="Average Loss (projected)", color="blue")
-plt.plot(x, unprojected_avg, label="Average Loss (unprojected)", color="green")
+plt.plot(x, projected_avg, label="Average Loss (Gradient: Projected, Momentum: Rotated)", color="blue")
+plt.plot(x, unprojected_avg, label="Average Loss (Gradient: Projected, Momentum: Projected)", color="green")
 
 plt.xlabel("Step Number")
 plt.ylabel("Loss")

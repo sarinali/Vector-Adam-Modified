@@ -18,9 +18,9 @@ parser.add_argument('-f', '--flag', action='store_true', help='A boolean flag fo
 args = parser.parse_args()
 
 # Access the arguments
-# print(args.arg1, file=sys.stderr)
+print(args.arg1, file=sys.stderr)
 # print(args.arg2, file=sys.stderr)
-print(args.learning_rate, file=sys.stderr)
+# print(args.learning_rate, file=sys.stderr)
 print(args.arg2, file=sys.stderr)
 
 # Set optimizer hyperparameters
@@ -36,7 +36,7 @@ show_vector_flag = args.flag
 
 # starting_point = random_point_on_sphere(radius)
 starting_point = torch.from_numpy(create_pointer(0, 0, radius))
-print(f"The starting point is {starting_point}.")
+# print(f"The starting point is {starting_point}.")
 
 # Create the initial pointer n
 v = starting_point.clone().numpy()
@@ -54,25 +54,24 @@ a = torch.tensor([radius, 0.0, 0.0], dtype=torch.float32)
 b = torch.tensor([0.0, radius, 0.0], dtype=torch.float32)
 # b = random_point_on_sphere(radius)
 
-print(f"The two points a and b respectively are {a} and {b}")
+# print(f"The two points     a and b respectively are {a} and {b}")
 
 # Initialize VectorAdam optimizer
-vadam = VectorAdamModified([{'params': v, 'axis': -1}], lr=lr, betas=betas, eps=eps)
-vadam_unnormalized = VectorAdam([{'params': v_unprojected, 'axis': -1}], lr=lr, betas=betas, eps=eps)
-# vadam_only_normalized = VectorAdam({})
+vadam = VectorAdamModified([{'params': v, 'axis': -1}], lr=lr, betas=betas, eps=eps, r=radius)
+vadam_unnormalized = VectorAdamModified([{'params': v_unprojected, 'axis': -1}], lr=lr, betas=betas, eps=eps, r=radius)
 
 # Enable interactive mode
 plt.ion()
 fig = plt.figure(figsize=(21, 7))
-gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 1])
+gs = gridspec.GridSpec(1, 2, width_ratios=[1, 1])
 
-ax_sphere = fig.add_subplot(gs[0], projection='3d')
-ax_loss = fig.add_subplot(gs[1])
-ax_loss_unnormalized = fig.add_subplot(gs[2])
+# ax_sphere = fig.add_subplot(gs[0], projection='3d')
+ax_loss = fig.add_subplot(gs[0])
+ax_loss_unnormalized = fig.add_subplot(gs[1])
 
 # Plot the initial sphere
-plot_sphere(ax_sphere, radius, a, b, v, v_unprojected)
-plt.draw()
+# plot_sphere(ax_sphere, radius, a, b, v, v_unprojected)
+# plt.draw()
 
 loss_list = []
 loss_list_unnormalized = []
@@ -88,9 +87,12 @@ for i in range(args.arg2):
     vbf = v.detach().cpu().clone()
     loss1 = sphere_energy(a, b, v)
     loss1.backward()
-    vadam.step_modified(v)
+    vadam.step_modified(v, project=True, project_momentum=False)
     vaf = v.detach().cpu().clone()
     adam_step = vaf - vbf
+
+    # rotate the momentum
+    vadam.transport_momentum(vbf, vaf)
 
     # print(adam_step)
     vector_list.append(adam_step.clone())
@@ -100,7 +102,8 @@ for i in range(args.arg2):
     vbf_unnormalized = v_unprojected.detach().cpu().clone()
     loss2 = sphere_energy(a, b, v_unprojected)
     loss2.backward()
-    vadam_unnormalized.step()
+    # project the gradient and the momentum
+    vadam_unnormalized.step_modified(v_unprojected, project=True, project_momentum=True)
     vaf_unnormalized = v_unprojected.detach().cpu().clone()
     adam_step_unnormalized = vaf_unnormalized - vbf_unnormalized
 
@@ -120,29 +123,29 @@ for i in range(args.arg2):
         position_list_unprojected.append(v_unprojected.detach().cpu().clone())
 
     # Clear the previous plots
-    ax_sphere.cla()
+    # ax_sphere.cla()
     ax_loss.cla()
     ax_loss_unnormalized.cla()
 
     # Plot the sphere and points
-    plot_sphere(ax_sphere, radius, a, b, v, v_unprojected)
-    if show_vector_flag:
-        plot_vectors(ax_sphere, vector_list, position_list, 'g')
-        plot_vectors(ax_sphere, vector_list_unprojected, position_list_unprojected, 'm')
-    ax_sphere.set_title(f'Iteration {i+1}')
+    # plot_sphere(ax_sphere, radius, a, b, v, v_unprojected)
+    # if show_vector_flag:
+    #     plot_vectors(ax_sphere, vector_list, position_list, 'g')
+    #     plot_vectors(ax_sphere, vector_list_unprojected, position_list_unprojected, 'm')
+    # ax_sphere.set_title(f'Iteration {i+1}')
 
     # Plot the loss
     ax_loss.plot(loss_list, label='Loss')
     ax_loss.set_xlabel('Iteration')
     ax_loss.set_ylabel('Loss')
-    ax_loss.set_title('Loss Over Iterations')
+    ax_loss.set_title('Loss Over Iterations (Gradient: Projected, Momentum: Rotated)')
     ax_loss.legend()
 
     # Plot the loss
     ax_loss_unnormalized.plot(loss_list_unnormalized, label='Loss')
     ax_loss_unnormalized.set_xlabel('Iteration')
     ax_loss_unnormalized.set_ylabel('Loss')
-    ax_loss_unnormalized.set_title('Loss Over Iterations (Un Projected)')
+    ax_loss_unnormalized.set_title('Loss Over Iterations (Gradient: Projected, Momentum: Projected)')
     ax_loss_unnormalized.legend()
 
     # Pause to update the plot
@@ -150,13 +153,13 @@ for i in range(args.arg2):
     plt.pause(0.1)  # Pause for 0.5 seconds
 
 # Disable interactive mode and show the final plot
-print(f"The final position of projected VectorAdam is {v}, the intended position is {project_point_to_sphere(find_closest_point(a, b), radius)}")
-print(f"The final position of the unnormalized and unproject point is {v_unprojected}, the intended position is {find_closest_point(a, b)}")
+# print(f"The final position of projected VectorAdam is {v}, the intended position is {project_point_to_sphere(find_closest_point(a, b), radius)}")
+# print(f"The final position of the unnormalized and unproject point is {v_unprojected}, the intended position is {find_closest_point(a, b)}")
 
-print_list(loss_list, radius)
-print_list(loss_list_unnormalized, radius)
+# print_list(loss_list, radius)
+# print_list(loss_list_unnormalized, radius)
 
-plt.ioff()
+# plt.ioff()
 plt.show()
 
 # plt.close()

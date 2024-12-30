@@ -5,6 +5,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 import torch 
+import polyscope as ps
 from mpl_toolkits.mplot3d import Axes3D
 from typing import List
 
@@ -46,6 +47,21 @@ def normalize_tensor(tensor: torch.Tensor, radius: float):
     magnitude = tensor.norm()
     normalization_constant = radius / magnitude
     normalized_tensor = normalization_constant * tensor
+    return normalized_tensor
+
+def normalize_to_ellipsoid(tensor: torch.Tensor, scale_x: float, scale_y: float, scale_z: float) -> torch.Tensor:
+    # Scale the input point to the ellipsoid's parameter space
+    scaled_tensor = tensor / torch.tensor([scale_x, scale_y, scale_z], device=tensor.device)
+    
+    # Compute the magnitude of the scaled vector
+    magnitude = scaled_tensor.norm()
+    
+    # Normalize the scaled tensor
+    normalized_scaled_tensor = scaled_tensor / magnitude
+    
+    # Rescale back to the ellipsoid's dimensions
+    normalized_tensor = normalized_scaled_tensor * torch.tensor([scale_x, scale_y, scale_z], device=tensor.device)
+    
     return normalized_tensor
 
 def create_pointer(x: float, y: float, z: float):
