@@ -8,6 +8,9 @@ import torch
 import polyscope as ps
 from mpl_toolkits.mplot3d import Axes3D
 from typing import List
+from spherical_geometry.polygon import SphericalPolygon
+from scipy.spatial import SphericalVoronoi
+
 
 def print_list(loss_list: List[float], radius: float):
     for i in range(len(loss_list)):
@@ -300,3 +303,33 @@ def plotMesh2D(v_in=None, l_in=None, vn_in=None, ln_in=None, rv_in=None,
     image = np.transpose(image, (2,0,1))
     plt.close()
     return image
+
+def point_in_spherical_hull(p: torch.Tensor, pts: List[np.int64], sv: SphericalVoronoi) -> bool:
+    """
+    Check if point p lies within the spherical convex hull of points pts using spherical-geometry.
+    
+    Args:
+        p: Point to check (torch.Tensor with dtype=torch.float64)
+        pts: List of numpy int64 indices
+        
+    Returns:
+        bool: True if p lies within the hull, False otherwise
+    """    
+    if len(pts) < 3:
+        return False
+    
+    # Convert Cartesian coordinates to lon/lat
+    def cart_to_lonlat(xyz: torch.Tensor) -> tuple[float, float]:
+        lon = np.arctan2(xyz[1], xyz[0])
+        lat = np.arcsin(xyz[2])
+        return lon, lat
+    
+    # Convert hull points to lon/lat pairs
+    hull_points = [cart_to_lonlat(pt) for pt in pts]
+    
+    # Create spherical polygon
+    polygon = SphericalPolygon.from_lonlat(*zip(*hull_points))
+    
+    # Check if point is inside polygon
+    return polygon.contains_point(p)
+

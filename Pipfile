@@ -8,6 +8,7 @@ polyscope = "*"
 mplcursors = "*"
 torch = "*"
 trimesh = "*"
+spherical-geometry = "*"
 
 [dev-packages]
 

@@ -18,7 +18,10 @@ parser.add_argument('-f', '--flag', action='store_true', help='A boolean flag fo
 args = parser.parse_args()
 
 # Access the arguments
-print(args.arg1, file=sys.stderr)
+if args.learning_rate:
+    print(args.learning_rate, file=sys.stderr)
+else:
+    print(args.arg1, file=sys.stderr)
 # print(args.arg2, file=sys.stderr)
 # print(args.learning_rate, file=sys.stderr)
 print(args.arg2, file=sys.stderr)
@@ -124,8 +127,8 @@ for i in range(args.arg2):
 
     # Clear the previous plots
     # ax_sphere.cla()
-    ax_loss.cla()
-    ax_loss_unnormalized.cla()
+    # ax_loss.cla()
+    # ax_loss_unnormalized.cla()
 
     # Plot the sphere and points
     # plot_sphere(ax_sphere, radius, a, b, v, v_unprojected)
@@ -135,31 +138,31 @@ for i in range(args.arg2):
     # ax_sphere.set_title(f'Iteration {i+1}')
 
     # Plot the loss
-    ax_loss.plot(loss_list, label='Loss')
-    ax_loss.set_xlabel('Iteration')
-    ax_loss.set_ylabel('Loss')
-    ax_loss.set_title('Loss Over Iterations (Gradient: Projected, Momentum: Rotated)')
-    ax_loss.legend()
+    # ax_loss.plot(loss_list, label='Loss')
+    # ax_loss.set_xlabel('Iteration')
+    # ax_loss.set_ylabel('Loss')
+    # ax_loss.set_title('Loss Over Iterations (Gradient: Projected, Momentum: Rotated)')
+    # ax_loss.legend()
 
-    # Plot the loss
-    ax_loss_unnormalized.plot(loss_list_unnormalized, label='Loss')
-    ax_loss_unnormalized.set_xlabel('Iteration')
-    ax_loss_unnormalized.set_ylabel('Loss')
-    ax_loss_unnormalized.set_title('Loss Over Iterations (Gradient: Projected, Momentum: Projected)')
-    ax_loss_unnormalized.legend()
+    # # Plot the loss
+    # ax_loss_unnormalized.plot(loss_list_unnormalized, label='Loss')
+    # ax_loss_unnormalized.set_xlabel('Iteration')
+    # ax_loss_unnormalized.set_ylabel('Loss')
+    # ax_loss_unnormalized.set_title('Loss Over Iterations (Gradient: Projected, Momentum: Projected)')
+    # ax_loss_unnormalized.legend()
 
     # Pause to update the plot
-    plt.draw()
-    plt.pause(0.1)  # Pause for 0.5 seconds
+    # plt.draw()
+    # plt.pause(0.1)  # Pause for 0.5 seconds
 
 # Disable interactive mode and show the final plot
 # print(f"The final position of projected VectorAdam is {v}, the intended position is {project_point_to_sphere(find_closest_point(a, b), radius)}")
 # print(f"The final position of the unnormalized and unproject point is {v_unprojected}, the intended position is {find_closest_point(a, b)}")
 
-# print_list(loss_list, radius)
-# print_list(loss_list_unnormalized, radius)
+print_list(loss_list, radius)
+print_list(loss_list_unnormalized, radius)
 
 # plt.ioff()
-plt.show()
+# plt.show()
 
 # plt.close()

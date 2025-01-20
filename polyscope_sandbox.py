@@ -17,26 +17,27 @@ parser.add_argument('--learning_rate', type=float, default=1.5, help='Learning r
 parser.add_argument('-f', '--flag', action='store_true', help='A boolean flag for showing vectors')
 
 # Parse the arguments
-args = parser.parse_args()
+# args = parser.parse_args()
 
 # Access the arguments
 # print(args.arg1, file=sys.stderr)
 # print(args.arg2, file=sys.stderr)
-print(args.learning_rate, file=sys.stderr)
-print(args.arg2, file=sys.stderr)
+# print(args.learning_rate, file=sys.stderr)
+# print(args.arg2, file=sys.stderr)
 
 # Set optimizer hyperparameters
-lr = args.learning_rate
+# lr = args.learning_rate
+lr = 1.5
 betas = (0.9, 0.999)
 eps = 1e-8
 radius = 1
 
 
 # Define steps constant
-steps = args.arg2
+steps = 30
 
 # Define vector constant
-show_vector_flag = args.flag
+# show_vector_flag = args.flag
 
 starting_point = torch.from_numpy(create_pointer(0, 0, radius))
 # starting_point = torch.from_numpy(create_pointer(0.707, 0.707, 0))

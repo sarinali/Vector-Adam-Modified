@@ -15,7 +15,7 @@
 
 # start=0.6
 # end=1.5
-num_steps=10
+num_steps=25
 
 current_date=$(date +"%Y%m%d_%H%M%S")
 

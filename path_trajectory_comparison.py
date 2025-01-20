@@ -20,7 +20,7 @@ radius = 10
 steps = 20
 
 starting_point = torch.from_numpy(create_pointer(0, 0, radius))
-print(f"The starting point is {starting_point}.")
+# print(f"The starting point is {starting_point}.")
 
 # Create the initial pointer n
 v = starting_point.clone().numpy()
@@ -49,10 +49,10 @@ b_np = b.clone().numpy().reshape(1, 3)
 
 a_cloud = ps.register_point_cloud("a", a_np, radius=0.02, color=(0,0,0))
 b_cloud = ps.register_point_cloud("b", b_np, radius=0.02, color=(0,0,0))
-v_cloud = ps.register_point_cloud("v", v_np, radius=0.02, color=(0.48,0.99,0))
-v_unprojected_cloud = ps.register_point_cloud("v_unprojected", v_unprojected_np, radius=0.02, color=(1.0,0,0))
+# v_cloud = ps.register_point_cloud("v", v_np, radius=0.02, color=(0.48,0.99,0))
+# v_unprojected_cloud = ps.register_point_cloud("v_unprojected", v_unprojected_np, radius=0.02, color=(1.0,0,0))
 
-print(f"The two points a and b respectively are {a} and {b}")
+# print(f"The two points a and b respectively are {a} and {b}")
 
 vadam = VectorAdamModified([{'params': v, 'axis': -1}], lr=lr, betas=betas, eps=eps, r=radius)
 vadam_unnormalized = VectorAdamModified([{'params': v_unprojected, 'axis': -1}], lr=lr, betas=betas, eps=eps, r=radius)
@@ -60,7 +60,7 @@ vadam_unnormalized = VectorAdamModified([{'params': v_unprojected, 'axis': -1}],
 loss_list = []
 loss_list_unnormalized = []
 
-vector_list = np.array([v.detach().numpy().reshape(3)])
+vector_list = np.array([0,0,0])
 vector_list = vector_list.reshape(-1, 3)
 
 # vector_list = np.array([0, 0, 0])
@@ -72,8 +72,10 @@ vector_list = vector_list.reshape(-1, 3)
 vector_list_unprojected = np.array([0, 0, 0])
 vector_list_unprojected = vector_list_unprojected.reshape(-1,3)
 
-position_list = np.array(v.detach().numpy().reshape(1,3))
-position_list_unprojected = np.array(v_unprojected.detach().numpy().reshape(1,3))
+# position_list = np.array(v.detach().numpy().reshape(1,3))
+position_list = np.array([[0,0,0]])
+# position_list_unprojected = np.array(v_unprojected.detach().numpy().reshape(1,3))
+position_list_unprojected = np.array([[0,0,0]])
 
 # Generate a sphere mesh
 sphere = trimesh.primitives.Sphere(radius=radius)
@@ -137,8 +139,8 @@ for i in range(steps):
         v_unprojected.copy_(normalized_unprojected_v)
 
         # for multiple vectors to show up
-        position_list = np.concatenate((position_list, v.detach().numpy().reshape(1,3)), axis=0)
-        position_list_unprojected = np.concatenate((position_list_unprojected, v_unprojected.detach().numpy().reshape(1,3)), axis=0)
+        position_list = np.concatenate((position_list, v.detach().numpy().reshape(-1,3)), axis=0)
+        position_list_unprojected = np.concatenate((position_list_unprojected, v_unprojected.detach().numpy().reshape(-1,3)), axis=0)
 
     # Update the points
     # new_v_np = normalized_v.detach().numpy().reshape(1,3)
@@ -157,9 +159,12 @@ for i in range(steps):
     ps.frame_tick()
     sleep(0.5)
 
-
-
+ps.show()
+print_list(loss_list, radius)
+print_list(loss_list_unnormalized, radius)
+# print(loss_list)
+# print(loss_list_unnormalized)
 # Disable interactive mode and show the final plot
-print(f"The final position of projected VectorAdam is {v}, the intended position is {project_point_to_sphere(find_closest_point(a, b), radius)}")
-print(f"The final position of the unnormalized and unproject point is {v_unprojected}, the intended position is {project_point_to_sphere(find_closest_point(a, b), radius)}")
+# print(f"The final position of projected VectorAdam is {v}, the intended position is {project_point_to_sphere(find_closest_point(a, b), radius)}")
+# print(f"The final position of the unnormalized and unproject point is {v_unprojected}, the intended position is {project_point_to_sphere(find_closest_point(a, b), radius)}")
 

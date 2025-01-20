@@ -11,7 +11,7 @@ class SphereSimulation:
 simulations = []
 num_values = 0
 
-with open('logs/learningrate_loss_logs.txt', 'r') as file:
+with open('logs/20250106_073718_loss_logs.txt', 'r') as file:
     # Read the lines
     lines = file.readlines()
 
