@@ -19,8 +19,11 @@ class ContextVoronoi(Context):
                  num_observations: int, 
                  mesh_path: str = None,
                  mesh_scale: float = 1.0,
-                 params: torch.Tensor = None):
-        super().__init__(radius, lr, betas, eps, steps, params)
+                 params: torch.Tensor = None,
+                 verbose=False,
+                 write_to_file=False,
+                 ):
+        super().__init__(radius, lr, betas, eps, steps, params, verbose=verbose, write_to_file=write_to_file)
         self.num_observations = num_observations
         self.uniform_sampler = UniformSampler(self.num_observations)
         self.anchor_sampler = UniformSampler(self.num_anchor_points)
@@ -75,41 +78,21 @@ class ContextVoronoi(Context):
         average_distance = torch.mean(distances)  # Calculate the average distance
         return average_distance.item()  # Return as a Python float
 
-    def generate_voronoi_diagram(self):
-        self.center = np.array([0, 0, 0])
-        # Detach the tensor and convert it to a NumPy array
-        centroidal_points_np = self.centroidal_points.detach().numpy()
-        self.sv = SphericalVoronoi(centroidal_points_np, self.radius, self.center)
-
-    # def compute_loss(self):
-    #     # go through all the centroid points 
-    #     loss = 0.0
-    #     region_mapping = self.get_region_mapping()
-    #     for i in range(len(self.centroidal_points)):
-    #         centroid = self.centroidal_points[i]
-    #         for anchor in region_mapping[i]:
-    #             loss += (centroid - anchor).norm() ** 2
-    #     return loss
-
     def perform_step(self):
         loss = compute_loss(self.centroidal_points, self.anchor_points)
-        print(f"Current loss: {loss}")
+        if self.verbose:
+            print(f"Current loss: {loss}")
+        if self.write_to_file:
+            self.logging_data["loss"].append(loss.item())
         loss.backward()
-        # _ = self.centroidal_points.clone()
         self.vadam.step_modified(self.centroidal_points, project=False)
+
+        self.register_anchor_points()
     
     def compute_loss(self):
-        # Convert centroidal and anchor points to PyTorch tensors
-        # centroidal_points_tensor = torch.tensor(self.centroidal_points, requires_grad=True)
         anchor_points_tensor = torch.tensor(self.anchor_points)
-
-        # Compute pairwise distances between centroids and anchors using PyTorch
         distances = torch.norm(self.centroidal_points[:, None, :] - anchor_points_tensor[None, :, :], dim=2)
-
-        # Find the minimum distance for each anchor point
         min_distances, _ = torch.min(distances, dim=0)
-
-        # Compute the loss as the sum of squared minimum distances
         loss = torch.sum(min_distances ** 2)
 
         return loss
@@ -119,16 +102,4 @@ class ContextVoronoi(Context):
         with torch.no_grad():  # Prevent tracking gradients during normalization
             normalized_centroidal_points = self.centroidal_points / torch.norm(self.centroidal_points, dim=1, keepdim=True) * self.radius
             self.centroidal_points.copy_(normalized_centroidal_points)  # Use copy_ to maintain the original tensor's gradient tracking
-            
-    # index in self.sv -> list of anchor points that fall in the region
-    def get_region_mapping(self):
-        region_mapping = defaultdict(list)
-        for anchor in self.anchor_points:
-            for i in range(len(self.sv.regions)):
-                region = self.sv.regions[i]
-                point_region = [self.sv.vertices[r] for r in region]
-                if point_in_spherical_hull(anchor, point_region, self.sv):
-                    region_mapping[i].append(anchor)
-        return region_mapping
-            
     
