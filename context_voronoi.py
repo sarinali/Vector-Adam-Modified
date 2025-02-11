@@ -38,22 +38,48 @@ class ContextVoronoi(Context):
 
     def generate_centroidal_points(self):
         self.centroidal_points = self.uniform_sampler.generate_uniform_points()
-        self.params = self.centroidal_points
+        self.centroidal_points = torch.stack(self.centroidal_points)
 
     def register_points(self):
-        points_tensor = torch.stack(self.centroidal_points)
-        ps.register_point_cloud("centroids", points_tensor, color=(0, 0, 0))
+        # Create a copy of the centroidal points for visualization
+        self.centroids_display = ps.register_point_cloud("centroids", self.centroidal_points, color=(0, 0, 0))
 
+    def update_centroids_display(self):
+        centroidal_points_np = self.centroidal_points.detach().cpu().numpy()
+        self.centroids_display.update_point_positions(centroidal_points_np)
+        
     # register some anchor points on the mesh
     def register_anchor_points(self):
         self.anchor_points = self.anchor_sampler.generate_uniform_points()
-        anchor_points_tensor = torch.stack(self.anchor_points)
-        ps.register_point_cloud("anchor_points", anchor_points_tensor, color=(0, 0, 0), transparency=0.5)
+        self.anchor_points = torch.stack(self.anchor_points)
+        # ps.register_point_cloud("anchor_points", self.anchor_points, color=(0, 0, 0), transparency=0.5)
 
+    def initialize_optimizer(self):
+        self.vadam = VectorAdamModified([{'params': self.centroidal_points, 'axis': -1}], lr=self.lr, betas=self.betas, eps=self.eps)
     
+    def initialize(self):
+        self.generate_centroidal_points()
+        self.register_points()
+        ps.set_ground_plane_mode("shadow_only")
+        # after registering the points on the mesh mark as requires grad
+        self.centroidal_points.requires_grad_()
+        self.register_anchor_points()
+        self.initialize_optimizer()
+
+    def average_distance_from_origin(self):
+        distances = torch.norm(self.centroidal_points, dim=1)  # Compute distances from the origin
+        # Print distances that exceed self.radius
+        for distance in distances:
+            if distance > self.radius:
+                print(f"Distance {distance.item()} exceeds radius {self.radius}")
+        average_distance = torch.mean(distances)  # Calculate the average distance
+        return average_distance.item()  # Return as a Python float
+
     def generate_voronoi_diagram(self):
         self.center = np.array([0, 0, 0])
-        self.sv = SphericalVoronoi(self.centroidal_points, self.radius, self.center)
+        # Detach the tensor and convert it to a NumPy array
+        centroidal_points_np = self.centroidal_points.detach().numpy()
+        self.sv = SphericalVoronoi(centroidal_points_np, self.radius, self.center)
 
     # def compute_loss(self):
     #     # go through all the centroid points 
@@ -64,14 +90,21 @@ class ContextVoronoi(Context):
     #         for anchor in region_mapping[i]:
     #             loss += (centroid - anchor).norm() ** 2
     #     return loss
+
+    def perform_step(self):
+        loss = compute_loss(self.centroidal_points, self.anchor_points)
+        print(f"Current loss: {loss}")
+        loss.backward()
+        # _ = self.centroidal_points.clone()
+        self.vadam.step_modified(self.centroidal_points, project=False)
     
     def compute_loss(self):
         # Convert centroidal and anchor points to PyTorch tensors
-        centroidal_points_tensor = torch.tensor(self.centroidal_points, requires_grad=True)
+        # centroidal_points_tensor = torch.tensor(self.centroidal_points, requires_grad=True)
         anchor_points_tensor = torch.tensor(self.anchor_points)
 
         # Compute pairwise distances between centroids and anchors using PyTorch
-        distances = torch.norm(centroidal_points_tensor[:, None, :] - anchor_points_tensor[None, :, :], dim=2)
+        distances = torch.norm(self.centroidal_points[:, None, :] - anchor_points_tensor[None, :, :], dim=2)
 
         # Find the minimum distance for each anchor point
         min_distances, _ = torch.min(distances, dim=0)
@@ -80,6 +113,12 @@ class ContextVoronoi(Context):
         loss = torch.sum(min_distances ** 2)
 
         return loss
+    
+    def normalize_points(self):
+        # Normalize the centroidal points and scale to self.radius
+        with torch.no_grad():  # Prevent tracking gradients during normalization
+            normalized_centroidal_points = self.centroidal_points / torch.norm(self.centroidal_points, dim=1, keepdim=True) * self.radius
+            self.centroidal_points.copy_(normalized_centroidal_points)  # Use copy_ to maintain the original tensor's gradient tracking
             
     # index in self.sv -> list of anchor points that fall in the region
     def get_region_mapping(self):

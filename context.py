@@ -9,7 +9,7 @@ class Context:
                 eps: float,
                 steps: int,
                 params: torch.Tensor = None,
-                num_anchor_points: int = 1000
+                num_anchor_points: int = 6000 #stress test this later, experiment with learning rate, plot loss, use the modified version
                 ):
         self.radius = radius
         self.lr = lr
@@ -19,6 +19,3 @@ class Context:
         self.params = params
         self.num_anchor_points = num_anchor_points
         ps.init()
-
-    def initialize(self):
-        self.optimizer = VectorAdamModified([{'params': self.params, 'axis': -1}], lr=self.lr, betas=self.betas, eps=self.eps)

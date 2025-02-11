@@ -333,3 +333,11 @@ def point_in_spherical_hull(p: torch.Tensor, pts: List[np.int64], sv: SphericalV
     # Check if point is inside polygon
     return polygon.contains_point(p)
 
+def compute_loss(centroidal_points: torch.Tensor, anchor_points: torch.Tensor):
+    # Compute pairwise distances between centroids and anchors using PyTorch
+    distances = torch.norm(centroidal_points[:, None, :] - anchor_points[None, :, :], dim=2)
+    # Find the minimum distance for each anchor point
+    min_distances, _ = torch.min(distances, dim=0)
+    # Compute the loss as the sum of squared minimum distances
+    loss = torch.sum(min_distances ** 2)
+    return loss

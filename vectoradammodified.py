@@ -142,9 +142,8 @@ class VectorAdamModified(torch.optim.Optimizer):
                         g1 = (dot_numerator / dot_denominator) * grad
                     else:
                         g1.mul_(b1).add_(grad, alpha=1-b1)
-
-
-
+                else:
+                    g1.mul_(b1).add_(grad, alpha=1-b1)
 
                 if project_momentum:
                     self.momentum = g1
