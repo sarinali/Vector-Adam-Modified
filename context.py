@@ -13,7 +13,7 @@ class Context:
                 eps: float,
                 steps: int,
                 params: torch.Tensor = None,
-                num_anchor_points: int = 6000, #stress test this later, experiment with learning rate, plot loss, use the modified version
+                num_anchor_points: int = 5000, #stress test this later, experiment with learning rate, plot loss, use the modified version
                 verbose=False,
                 write_to_file=False,
                 logging_path="logs"

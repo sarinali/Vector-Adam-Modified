@@ -19,6 +19,31 @@ class VectorAdamModified(torch.optim.Optimizer):
         rotated_vector = np.dot(self.rotation_matrix, vector)
         return rotated_vector
 
+    def project_gradient(self, cur_point: torch.Tensor, grad: torch.Tensor):
+        """
+        Project the gradient onto the current point for a batch of centroids.
+        
+        cur_point: Tensor of shape (num_centroids, D)
+        grad: Tensor of shape (num_centroids, D)
+        
+        Returns: Projected gradient tensor of shape (num_centroids, D)
+        """
+
+        # Compute the dot product for each centroid and corresponding gradient
+        dot_numerator = torch.sum(cur_point * grad, dim=1, keepdim=True)  # (num_centroids, 1)
+        dot_denominator = torch.sum(cur_point * cur_point, dim=1, keepdim=True)  # (num_centroids, 1)
+
+        # Avoid division by zero (if cur_point is zero, don't modify grad)
+        dot_denominator = torch.where(dot_denominator > 1e-8, dot_denominator, torch.ones_like(dot_denominator))
+
+        # Compute projection of grad onto cur_point
+        proj_v_on_n = (dot_numerator / dot_denominator) * cur_point  # (num_centroids, D)
+
+        # Subtract projection component from grad to make it orthogonal
+        grad_projected = grad - proj_v_on_n  # (num_centroids, D)
+
+        return grad_projected
+
     def calculate_rotation_matrix(self, start_point: NDArray[Union[np.float64, np.int_]], end_point: NDArray[Union[np.float64, np.int_]]):
         rotation, _ = Rotation.align_vectors(np.reshape(start_point, (1, 3)), np.reshape(end_point, (1, 3)))
         self.rotation_matrix = rotation.as_matrix()
@@ -106,6 +131,66 @@ class VectorAdamModified(torch.optim.Optimizer):
 
     @torch.no_grad()
     def step_modified(self, cur_point: torch.Tensor, project=True, project_momentum=True, rotate_momentum=False):
+        for group in self.param_groups:
+            lr = group['lr']
+            b1, b2 = group['betas']
+            eps = group['eps']
+            axis = group['axis']
+            for p in group["params"]:
+                state = self.state[p]
+                # Lazy initialization
+                if len(state) == 0:
+                    state["step"] = 0
+                    state["g1"] = torch.zeros_like(p.data)
+                    state["g2"] = torch.zeros_like(p.data)
+
+                g1 = state["g1"]
+                g2 = state["g2"]
+
+                state["step"] += 1
+                grad = p.grad.data
+
+                # v is gr and n is cur_point. find the projection of v onto the tangent plane of n
+                if project:
+                    grad = self.project_gradient(cur_point, grad)
+
+                    if project_momentum:
+                        # project m1 onto grad
+                        g1.mul_(b1).add_(grad, alpha=1-b1)
+                        dot_numerator = torch.dot(g1.float(), grad.float())
+                        dot_denominator = torch.dot(grad.float(), grad.float())
+                        # g1 = (dot_numerator / dot_denominator) * g1
+                        g1 = (dot_numerator / dot_denominator) * grad
+                    else:
+                        g1.mul_(b1).add_(grad, alpha=1-b1)
+                else:
+                    g1.mul_(b1).add_(grad, alpha=1-b1)
+
+                if project_momentum:
+                    self.momentum = g1
+
+                # norm_g1 = torch.norm(g1)
+                # unit_tensor = g1 / norm_g1
+                # g1 = self.radius * unit_tensor
+                # self.momentum = g1
+                
+                if axis is not None:
+                    dim = grad.shape[axis]
+                    grad_norm = torch.norm(grad, dim=axis).unsqueeze(axis).repeat_interleave(dim, dim=axis)
+                    grad_sq = grad_norm * grad_norm
+                    g2.mul_(b2).add_(grad_sq, alpha=1-b2)
+                else:
+                    g2.mul_(b2).add_(grad.square(), alpha=1-b2)
+
+                m1 = g1 / (1-(b1**state["step"]))
+            
+                m2 = g2 / (1-(b2**state["step"]))
+                gr = m1 / (eps + m2.sqrt())
+
+                p.data.sub_(gr, alpha=lr)
+
+    @torch.no_grad()
+    def step_modified_v2(self, cur_point: torch.Tensor, project=True, project_momentum=True, rotate_momentum=False):
         for group in self.param_groups:
             lr = group['lr']
             b1, b2 = group['betas']

@@ -333,11 +333,25 @@ def point_in_spherical_hull(p: torch.Tensor, pts: List[np.int64], sv: SphericalV
     # Check if point is inside polygon
     return polygon.contains_point(p)
 
+# def compute_loss(centroidal_points: torch.Tensor, anchor_points: torch.Tensor):
+#     # Compute pairwise distances between centroids and anchors using PyTorch
+#     distances = torch.norm(centroidal_points[:, None, :] - anchor_points[None, :, :], dim=2)
+#     # Find the minimum distance for each anchor point
+#     min_distances, _ = torch.min(distances, dim=0)
+#     # Compute the loss as the sum of squared minimum distances
+#     loss = torch.sum(min_distances ** 2)
+#     return loss
+
 def compute_loss(centroidal_points: torch.Tensor, anchor_points: torch.Tensor):
-    # Compute pairwise distances between centroids and anchors using PyTorch
-    distances = torch.norm(centroidal_points[:, None, :] - anchor_points[None, :, :], dim=2)
-    # Find the minimum distance for each anchor point
-    min_distances, _ = torch.min(distances, dim=0)
-    # Compute the loss as the sum of squared minimum distances
-    loss = torch.sum(min_distances ** 2)
+    # Compute pairwise Euclidean distances between centroids and anchor points. Find the closest centroid for each anchor point
+    # create an empty tensor to accumulate loss for each centroid then iterate through unique centroids and accumulate loss once per centroid
+    distances = torch.cdist(centroidal_points, anchor_points)
+    min_distances, closest_centroids = torch.min(distances, dim=0)
+    loss = torch.zeros((), device=centroidal_points.device)
+
+    unique_centroids = torch.unique(closest_centroids)
+    for centroid in unique_centroids:
+        mask = closest_centroids == centroid
+        loss += torch.sum(min_distances[mask] ** 2)
+
     return loss

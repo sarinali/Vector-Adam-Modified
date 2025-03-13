@@ -43,6 +43,11 @@ class ContextVoronoi(Context):
         self.centroidal_points = self.uniform_sampler.generate_uniform_points()
         self.centroidal_points = torch.stack(self.centroidal_points)
 
+    def generate_voronoi_diagram(self):
+        self.center = np.array([0, 0, 0])
+        centroidal_points_np = self.centroidal_points.detach().numpy()
+        self.sv = SphericalVoronoi(centroidal_points_np, self.radius, self.center)
+
     def register_points(self):
         # Create a copy of the centroidal points for visualization
         self.centroids_display = ps.register_point_cloud("centroids", self.centroidal_points, color=(0, 0, 0))
@@ -85,17 +90,23 @@ class ContextVoronoi(Context):
         if self.write_to_file:
             self.logging_data["loss"].append(loss.item())
         loss.backward()
-        self.vadam.step_modified(self.centroidal_points, project=False)
+        self.vadam.step_modified(self.centroidal_points, project=True, project_momentum=False)
 
-        self.register_anchor_points()
-    
-    def compute_loss(self):
-        anchor_points_tensor = torch.tensor(self.anchor_points)
-        distances = torch.norm(self.centroidal_points[:, None, :] - anchor_points_tensor[None, :, :], dim=2)
-        min_distances, _ = torch.min(distances, dim=0)
-        loss = torch.sum(min_distances ** 2)
+        # self.register_anchor_points()
 
-        return loss
+    def point_in_region(self):
+        # use ray casting algo to determine if a point is inside of a region
+        pass
+
+    def assign_anchors_to_voronoi_regions(self):
+        # Assigns each anchor point to each of the voronoi regions
+        # returns map[voronoi_index (in self.sv)] -> List[anchor_point_index]
+
+        region_to_anchors = {i: [] for i in range(len(self.sv.regions))}
+
+        # for each of the 
+
+        return region_to_anchors
     
     def normalize_points(self):
         # Normalize the centroidal points and scale to self.radius
